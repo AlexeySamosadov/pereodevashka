@@ -9,7 +9,46 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --color-brand-bg: 240 244 248;
+        --color-brand-surface: 255 255 255;
+        --color-brand-primary: 79 70 229;
+        --color-brand-secondary: 236 72 153;
+        --color-brand-text: 31 41 55;
+        --color-brand-subtle: 107 114 128;
+        --color-brand-stroke: 209 213 219;
+      }
+      .theme-dark {
+        --color-brand-bg: 0 0 0;
+        --color-brand-surface: 28 28 30;
+        --color-brand-primary: 99 102 241;
+        --color-brand-secondary: 244 114 182;
+        --color-brand-text: 243 244 246;
+        --color-brand-subtle: 156 163 175;
+        --color-brand-stroke: 55 65 81;
+      }
+       .theme-sunset {
+        --color-brand-bg: 0 0 0;
+        --color-brand-surface: 28 28 30;
+        --color-brand-primary: 251 146 60;
+        --color-brand-secondary: 239 68 68;
+        --color-brand-text: 243 244 246;
+        --color-brand-subtle: 156 163 175;
+        --color-brand-stroke: 75 85 99;
+      }
+    </style>
     <script>
+      // Helper function to convert rgb variables to a format Tailwind understands
+      const withOpacity = (variableName) => {
+        return ({ opacityValue }) => {
+          if (opacityValue !== undefined) {
+            return `rgba(var(${variableName}), ${opacityValue})`
+          }
+          return `rgb(var(${variableName}))`
+        }
+      }
+
       tailwind.config = {
         theme: {
           extend: {
@@ -17,13 +56,23 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              'brand-bg': '#f0f4f8',
-              'brand-surface': '#ffffff',
-              'brand-primary': '#4f46e5',
-              'brand-secondary': '#ec4899',
-              'brand-text': '#1f2937',
-              'brand-subtle': '#6b7280',
-              'brand-stroke': '#d1d5db',
+              'brand-bg': withOpacity('--color-brand-bg'),
+              'brand-surface': withOpacity('--color-brand-surface'),
+              'brand-primary': withOpacity('--color-brand-primary'),
+              'brand-secondary': withOpacity('--color-brand-secondary'),
+              'brand-text': withOpacity('--color-brand-text'),
+              'brand-subtle': withOpacity('--color-brand-subtle'),
+              'brand-stroke': withOpacity('--color-brand-stroke'),
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+              'fade-in-fast': 'fadeIn 0.2s ease-in-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                '100%': { opacity: 1, transform: 'translateY(0)' },
+              }
             }
           }
         }
