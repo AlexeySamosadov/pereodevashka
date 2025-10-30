@@ -105,8 +105,14 @@ const useLocalization = () => {
         }
     }, [language]);
 
-    const t = useCallback((key: TranslationKey) => {
-        return translations[language][key] || translations['en'][key];
+    const t = useCallback((key: TranslationKey, ...args: any[]) => {
+        let translation = translations[language][key] || translations['en'][key];
+        if (args.length > 0) {
+            args.forEach((arg, index) => {
+                translation = translation.replace(`{${index}}`, arg);
+            });
+        }
+        return translation;
     }, [language]);
 
     return { language, setLanguage, t };
@@ -116,7 +122,7 @@ const useLocalization = () => {
 // --- Sub-components ---
 
 const Header: React.FC<{
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, ...args: any[]) => string;
   theme: Theme;
   setTheme: (theme: Theme) => void;
   language: Language;
@@ -208,7 +214,7 @@ interface ImageUploaderProps {
   image: UploadedImage | null;
   onImageChange: (file: File) => void;
   icon: React.ReactNode;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, ...args: any[]) => string;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ id, image, onImageChange, icon, t }) => {
@@ -288,15 +294,51 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ id, image, onImageChange,
 };
 
 
-const Spinner: React.FC<{text?: string}> = ({text}) => (
-    <div className="flex flex-col items-center justify-center space-y-4">
-        <svg className="animate-spin h-10 w-10 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p className="text-brand-subtle text-lg font-medium">{text}</p>
+interface LoadingViewProps {
+  personImage: UploadedImage | null;
+  clothingImage: UploadedImage | null;
+  loadingText: string;
+  t: (key: TranslationKey, ...args: any[]) => string;
+}
+
+const LoadingView: React.FC<LoadingViewProps> = ({ personImage, clothingImage, loadingText, t }) => (
+    <div className="flex flex-col items-center justify-center text-center animate-fade-in space-y-8 mt-16 md:mt-24 px-4">
+        <div className="flex items-center justify-center gap-4 sm:gap-8">
+            <div className="w-32 h-44 sm:w-40 sm:h-56 bg-brand-surface rounded-xl shadow-lg flex items-center justify-center">
+                {personImage ? <img src={personImage.previewUrl} alt={t('person')} className="object-cover w-full h-full rounded-xl" /> : <Spinner />}
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-brand-primary animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <div className="w-32 h-44 sm:w-40 sm:h-56 bg-brand-surface rounded-xl shadow-lg flex items-center justify-center">
+                {clothingImage ? <img src={clothingImage.previewUrl} alt={t('clothing')} className="object-cover w-full h-full rounded-xl" /> : <Spinner />}
+            </div>
+        </div>
+        <p className="text-brand-subtle text-lg font-medium">{loadingText}</p>
     </div>
 );
+
+
+const Spinner: React.FC<{text?: string, inline?: boolean}> = ({text, inline}) => {
+    if (inline) {
+        return (
+            <svg className="animate-spin h-5 w-5 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        );
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center space-y-4">
+            <svg className="animate-spin h-10 w-10 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {text && <p className="text-brand-subtle text-lg font-medium">{text}</p>}
+        </div>
+    );
+};
 
 interface StartMenuProps {
   onStart: () => void;
@@ -304,7 +346,7 @@ interface StartMenuProps {
   onLoadSession: () => void;
   hasHistory: boolean;
   hasSavedSession: boolean;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, ...args: any[]) => string;
 }
 
 const StartMenu: React.FC<StartMenuProps> = ({ onStart, onViewHistory, onLoadSession, hasHistory, hasSavedSession, t }) => (
@@ -423,7 +465,7 @@ const ZoomableImage: React.FC<{ src: string, alt: string, containerClassName?: s
   );
 };
 
-const ImageModal: React.FC<{ item: HistoryItem, onClose: () => void, t: (key: TranslationKey) => string }> = ({ item, onClose, t }) => {
+const ImageModal: React.FC<{ item: HistoryItem, onClose: () => void, t: (key: TranslationKey, ...args: any[]) => string }> = ({ item, onClose, t }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -441,7 +483,7 @@ const ImageModal: React.FC<{ item: HistoryItem, onClose: () => void, t: (key: Tr
       aria-labelledby="modal-title"
     >
       <div 
-        className="relative w-[90vw] h-[90vh] max-w-4xl bg-gray-900/50 backdrop-blur-sm rounded-lg shadow-2xl flex flex-col" 
+        className="relative w-[90vw] h-[90vh] max-w-4xl bg-brand-surface/70 backdrop-blur-xl rounded-xl shadow-2xl flex flex-col border border-brand-stroke/30" 
         onClick={e => e.stopPropagation()}
       >
         <h2 id="modal-title" className="sr-only">{t('imageDetailView')}</h2>
@@ -449,23 +491,23 @@ const ImageModal: React.FC<{ item: HistoryItem, onClose: () => void, t: (key: Tr
           onClick={onClose} 
           title={t('close')}
           aria-label={t('closeImageDetailView')}
-          className="absolute top-2 right-2 z-20 w-10 h-10 flex items-center justify-center text-white bg-black/50 rounded-full hover:bg-white/20 transition-colors"
+          className="absolute top-2 right-2 z-20 w-10 h-10 flex items-center justify-center text-brand-text bg-brand-surface/50 rounded-full hover:bg-brand-stroke/50 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
         <div className="flex-grow w-full p-4 min-h-0">
           <ZoomableImage src={item.result} alt={t('fullScreenTryOnView')} containerClassName="bg-transparent"/>
         </div>
-        <div className="flex-shrink-0 w-full p-3 border-t border-white/20">
-          <h3 className="text-sm font-semibold text-white mb-2 text-center">{t('sourceImages')}</h3>
+        <div className="flex-shrink-0 w-full p-3 border-t border-brand-stroke">
+          <h3 className="text-sm font-semibold text-brand-text mb-2 text-center">{t('sourceImages')}</h3>
           <div className="flex justify-center items-center gap-4">
             <div className="text-center">
-              <img src={item.person} alt={t('originalPerson')} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-md border-2 border-white/20" />
-              <p className="text-xs text-center text-gray-300 mt-1">{t('person')}</p>
+              <img src={item.person} alt={t('originalPerson')} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-md border-2 border-brand-stroke" />
+              <p className="text-xs text-center text-brand-subtle mt-1">{t('person')}</p>
             </div>
             <div className="text-center">
-               <img src={item.clothing} alt={t('originalClothing')} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-md border-2 border-white/20" />
-               <p className="text-xs text-center text-gray-300 mt-1">{t('clothing')}</p>
+               <img src={item.clothing} alt={t('originalClothing')} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-md border-2 border-brand-stroke" />
+               <p className="text-xs text-center text-brand-subtle mt-1">{t('clothing')}</p>
             </div>
           </div>
         </div>
@@ -488,17 +530,37 @@ const App: React.FC = () => {
   const [loadingText, setLoadingText] = useState('');
   const [error, setError] = useState<string | null>(null);
   
-  const [view, setView] = useState<'start' | 'tryOn' | 'history' | 'result'>('start');
+  const [view, setView] = useState<'start' | 'tryOn' | 'history' | 'result' | 'loading'>('start');
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
 
-  const [removeBgEnabled, setRemoveBgEnabled] = useState(true);
-  const [styleTheme, setStyleTheme] = useState<StyleTheme>('Photorealistic');
+  const [removeBgEnabled, setRemoveBgEnabled] = useState(() => {
+      try {
+          const saved = localStorage.getItem('trayonRemoveBg');
+          return saved !== null ? JSON.parse(saved) : true;
+      } catch {
+          return true;
+      }
+  });
+
+  const [styleTheme, setStyleTheme] = useState<StyleTheme>(() => {
+    try {
+        const saved = localStorage.getItem('trayonStyleTheme') as StyleTheme;
+        if (saved && ['Photorealistic', 'Magazine Cover', 'Artistic'].includes(saved)) {
+            return saved;
+        }
+        return 'Photorealistic';
+    } catch {
+        return 'Photorealistic';
+    }
+  });
+
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   
   const [stylistPrompt, setStylistPrompt] = useState('');
   const [customStylistPrompt, setCustomStylistPrompt] = useState('');
+  const [preferredColors, setPreferredColors] = useState('');
   const [suggestions, setSuggestions] = useState<ClothingSuggestion[]>([]);
   const [suggestionImages, setSuggestionImages] = useState<Record<string, {url: string, mimeType: string, file: File} | 'loading'>>({});
 
@@ -514,10 +576,6 @@ const App: React.FC = () => {
       const savedSessionData = localStorage.getItem('trayonSavedSession');
       if (savedSessionData) {
         setSavedSession(JSON.parse(savedSessionData));
-      }
-      const savedRemoveBg = localStorage.getItem('trayonRemoveBg');
-      if (savedRemoveBg) {
-        setRemoveBgEnabled(JSON.parse(savedRemoveBg));
       }
       // Load persisted images
       const persistedPerson = localStorage.getItem('trayonPersonImage');
@@ -553,6 +611,15 @@ const App: React.FC = () => {
       console.error("Failed to save removeBg setting", e);
     }
   }, [removeBgEnabled]);
+
+  // Persist style theme
+  useEffect(() => {
+    try {
+      localStorage.setItem('trayonStyleTheme', styleTheme);
+    } catch (e) {
+      console.error("Failed to save style theme", e);
+    }
+  }, [styleTheme]);
 
   // Persist uploaded images
   useEffect(() => {
@@ -591,39 +658,31 @@ const App: React.FC = () => {
   };
   
   const handleTryOn = async () => {
-    if (!personImage || (!clothingImage && !generatedImage)) {
+    if (!personImage || !clothingImage) {
       setError(t('errorNeedBothImagesUpload'));
       return;
     }
     
-    // Use the generated clothing image if it exists, otherwise use the uploaded one
-    const finalClothingImage = clothingImage || (generatedImage ? {file: dataURLtoFile(`data:${generatedImage.mimeType};base64,${generatedImage.url}`, 'clothing.png')!} : null);
-
-    if (!finalClothingImage) {
-        setError(t('errorNeedBothImagesUpload'));
-        return;
-    }
-
     setIsLoading(true);
     setError(null);
     setGeneratedImage(null);
-    setView('tryOn'); // Stay on tryOn view to show loading state
+    setView('loading');
     
     try {
       setLoadingText(t('magicMessage'));
-
-      const personBase64 = await fileToBase64(personImage.file);
-      let finalPersonBase64 = personBase64;
-      let finalPersonMimeType = personImage.file.type;
-
+      let personBase64 = await fileToBase64(personImage.file);
+      let personMimeType = personImage.file.type;
+      
       if (removeBgEnabled) {
-          const bgRemoved = await removeBackground(personBase64, personImage.file.type);
-          finalPersonBase64 = bgRemoved.data;
-          finalPersonMimeType = bgRemoved.mimeType;
+          setLoadingText(t('removingBackground'));
+          const bgRemoved = await removeBackground(personBase64, personMimeType);
+          personBase64 = bgRemoved.data;
+          personMimeType = bgRemoved.mimeType;
       }
       
-      const clothingBase64 = await fileToBase64(finalClothingImage.file);
-      const result = await virtualTryOn(finalPersonBase64, finalPersonMimeType, clothingBase64, finalClothingImage.file.type, styleTheme);
+      setLoadingText(t('generatingLook'));
+      const clothingBase64 = await fileToBase64(clothingImage.file);
+      const result = await virtualTryOn(personBase64, personMimeType, clothingBase64, clothingImage.file.type, styleTheme);
       
       const resultUrl = `data:${result.mimeType};base64,${result.data}`;
       setGeneratedImage({ url: resultUrl, mimeType: result.mimeType });
@@ -631,7 +690,7 @@ const App: React.FC = () => {
       // Add to history
       const newHistoryItem: HistoryItem = {
         person: personImage.previewUrl,
-        clothing: finalClothingImage.previewUrl,
+        clothing: clothingImage.previewUrl,
         result: resultUrl,
       };
       setHistory(prev => [newHistoryItem, ...prev]);
@@ -652,13 +711,18 @@ const App: React.FC = () => {
         setError(t('errorSelectStyle'));
         return;
     }
-    setIsLoading(true);
     setLoadingText(t('gettingSuggestions'));
     setError(null);
     setSuggestions([]);
     setSuggestionImages({});
+    
+    let isRequestLoading = true;
+    setTimeout(() => {
+      if(isRequestLoading) setIsLoading(true);
+    }, 200);
+
     try {
-        const results = await getClothingSuggestions(finalPrompt, language);
+        const results = await getClothingSuggestions(finalPrompt, language, preferredColors);
         setSuggestions(results);
         
         setLoadingText(t('generatingImageGallery'));
@@ -667,7 +731,7 @@ const App: React.FC = () => {
         results.forEach((suggestion) => {
             setSuggestionImages(prev => ({...prev, [suggestion.name]: 'loading'}));
 
-            const promise = generateClothingImage(suggestion.description).then(imageResult => {
+            const promise = generateClothingImage(suggestion.description, styleTheme).then(imageResult => {
                 const imageUrl = `data:${imageResult.mimeType};base64,${imageResult.data}`;
                 const imageFile = dataURLtoFile(imageUrl, `${suggestion.name.replace(/\s+/g, '-')}.png`);
                 if(imageFile) {
@@ -692,6 +756,7 @@ const App: React.FC = () => {
     } catch (e: any) {
         setError(e.message || t('errorUnexpected'));
     } finally {
+        isRequestLoading = false;
         setIsLoading(false);
         setLoadingText('');
     }
@@ -772,6 +837,7 @@ const App: React.FC = () => {
     setRemoveBgEnabled(true);
     setStylistPrompt('');
     setCustomStylistPrompt('');
+    setPreferredColors('');
     setSuggestions([]);
     setSuggestionImages({});
     // Clear persisted images
@@ -799,162 +865,198 @@ const App: React.FC = () => {
           t={t}
         />;
       
+      case 'loading':
+        return <LoadingView 
+          personImage={personImage} 
+          clothingImage={clothingImage} 
+          loadingText={loadingText}
+          t={t}
+        />;
+
       case 'tryOn':
       case 'result': // Also render try on view in background for result
         return (
           <div className="w-full max-w-md mx-auto animate-fade-in px-4">
-              <button onClick={() => setView('start')} className="text-brand-subtle font-semibold hover:text-brand-text transition-colors flex items-center mb-6">
-                  {t('backToMenu')}
-              </button>
-
-              <div className="space-y-8">
-                  <div className="text-center">
-                      <h2 className="text-2xl font-semibold text-brand-text">{t('yourPhoto')}</h2>
-                      <ImageUploader 
-                          id="person"
-                          image={personImage}
-                          onImageChange={handleImageChange(setPersonImage)}
-                          t={t}
-                          icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>}
+             <button onClick={() => setView('start')} className="text-brand-subtle font-semibold hover:text-brand-text transition-colors flex items-center mb-6 group">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                {t('backToMenu')}
+             </button>
+  
+            <div className="space-y-10">
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-brand-text text-left">{t('yourPhoto')}</h2>
+                    <ImageUploader 
+                        id="person"
+                        image={personImage}
+                        onImageChange={handleImageChange(setPersonImage)}
+                        t={t}
+                        icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full p-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>}
+                    />
+                    <div className="flex items-center justify-center p-2 rounded-lg">
+                         <label htmlFor="remove-bg-toggle" className="text-brand-text font-medium mr-3">{t('removeBackground')}</label>
+                         <button
+                           id="remove-bg-toggle"
+                           onClick={() => setRemoveBgEnabled(!removeBgEnabled)}
+                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${removeBgEnabled ? 'bg-brand-primary' : 'bg-brand-stroke'}`}
+                           aria-checked={removeBgEnabled}
+                           role="switch"
+                         >
+                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${removeBgEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                         </button>
+                     </div>
+                </div>
+  
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-brand-text text-left">{t('clothingItem')}</h2>
+                    <ImageUploader 
+                        id="clothing"
+                        image={clothingImage}
+                        onImageChange={handleImageChange(setClothingImage)}
+                        t={t}
+                        icon={<svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full p-2" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>}
+                    />
+                </div>
+  
+                <div className="flex items-center space-x-4">
+                  <hr className="flex-grow border-brand-stroke"/>
+                  <span className="text-brand-subtle font-semibold">{t('or')}</span>
+                  <hr className="flex-grow border-brand-stroke"/>
+                </div>
+  
+                <div className="border border-brand-stroke rounded-xl p-4 space-y-4 bg-brand-surface">
+                  <h3 className="text-lg font-semibold text-brand-text text-center">{t('aiStylist')}</h3>
+                  <select
+                      value={stylistPrompt}
+                      onChange={(e) => setStylistPrompt(e.target.value)}
+                      className="w-full bg-brand-bg border border-brand-stroke rounded-lg py-2 px-3 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  >
+                      <option value="" disabled>{t('styleSelect')}</option>
+                      <option value={t('styleCasualPrompt')}>{t('styleCasual')}</option>
+                      <option value={t('styleElegantPrompt')}>{t('styleElegant')}</option>
+                      <option value={t('styleOfficePrompt')}>{t('styleOffice')}</option>
+                      <option value={t('styleBeachPrompt')}>{t('styleBeach')}</option>
+                      <option value={t('styleWinterPrompt')}>{t('styleWinter')}</option>
+                      <option value={t('styleSportyPrompt')}>{t('styleSporty')}</option>
+                      <option value={t('styleBohoPrompt')}>{t('styleBoho')}</option>
+                      <option value={t('styleStreetwearPrompt')}>{t('styleStreetwear')}</option>
+                      <option value="custom">{t('styleCustom')}</option>
+                  </select>
+  
+                  {stylistPrompt === 'custom' && (
+                      <textarea
+                          value={customStylistPrompt}
+                          onChange={(e) => setCustomStylistPrompt(e.target.value)}
+                          placeholder={t('styleCustomPlaceholder')}
+                          className="w-full bg-brand-bg border border-brand-stroke rounded-lg py-2 px-3 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary animate-fade-in-fast"
+                          rows={3}
                       />
-                      <div className="mt-4 flex items-center justify-center space-x-2">
-                          <label htmlFor="remove-bg-toggle" className="text-brand-subtle font-medium">{t('removeBackground')}</label>
-                          <button
-                            id="remove-bg-toggle"
-                            onClick={() => setRemoveBgEnabled(!removeBgEnabled)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${removeBgEnabled ? 'bg-brand-primary' : 'bg-brand-stroke'}`}
-                            aria-checked={removeBgEnabled}
-                            role="switch"
-                          >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${removeBgEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                          </button>
-                      </div>
-                  </div>
-
-                  <div className="text-center">
-                      <h2 className="text-2xl font-semibold text-brand-text">{t('clothingItem')}</h2>
-                      <ImageUploader 
-                          id="clothing"
-                          image={clothingImage}
-                          onImageChange={handleImageChange(setClothingImage)}
-                          t={t}
-                          icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full"><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 014.01 20.987a60.436 60.436 0 002.088-2.182c.231-.231.442-.47.633-.711a61.43 61.43 0 006.331-8.03c.25-2.287.95-4.473 2.05-6.347a61.43 61.43 0 00-6.33-8.03C9.07 3.99 8.86 3.75 8.63 3.52a60.436 60.436 0 00-2.182-2.088A48.627 48.627 0 013.85 1.01a60.436 60.436 0 006.347.491c2.287-.25 4.472-.95 6.347-2.05a61.43 61.43 0 008.03 6.331c.231.23.47.442.711.633a60.436 60.436 0 002.182 2.088c.25 2.287.95 4.473 2.05 6.347a61.43 61.43 0 00-8.03 6.331c-.23-.23-.47-.442-.711-.633a60.436 60.436 0 00-2.182 2.088c-2.287.25-4.472.95-6.347 2.05z" /></svg>}
-                      />
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    <hr className="flex-grow border-brand-stroke"/>
-                    <span className="text-brand-subtle font-semibold">{t('or')}</span>
-                    <hr className="flex-grow border-brand-stroke"/>
-                  </div>
-
-                  <div className="border border-brand-stroke rounded-xl p-4 space-y-4 bg-brand-surface">
-                    <h3 className="text-lg font-semibold text-brand-text text-center">{t('aiStylist')}</h3>
-                    <select
-                        value={stylistPrompt}
-                        onChange={(e) => setStylistPrompt(e.target.value)}
-                        className="w-full bg-brand-bg border border-brand-stroke rounded-lg py-2 px-3 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                    >
-                        <option value="" disabled>{t('styleSelect')}</option>
-                        <option value={t('styleCasualPrompt')}>{t('styleCasual')}</option>
-                        <option value={t('styleElegantPrompt')}>{t('styleElegant')}</option>
-                        <option value={t('styleOfficePrompt')}>{t('styleOffice')}</option>
-                        <option value={t('styleBeachPrompt')}>{t('styleBeach')}</option>
-                        <option value={t('styleWinterPrompt')}>{t('styleWinter')}</option>
-                        <option value="custom">{t('styleCustom')}</option>
-                    </select>
-
-                    {stylistPrompt === 'custom' && (
-                        <textarea
-                            value={customStylistPrompt}
-                            onChange={(e) => setCustomStylistPrompt(e.target.value)}
-                            placeholder={t('styleCustomPlaceholder')}
-                            className="w-full bg-brand-bg border border-brand-stroke rounded-lg py-2 px-3 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary animate-fade-in-fast"
-                            rows={3}
-                        />
-                    )}
-                    <button 
-                        onClick={handleGetSuggestions} 
-                        disabled={isLoading || (!stylistPrompt || (stylistPrompt === 'custom' && !customStylistPrompt))}
-                        className="w-full bg-brand-surface text-brand-text font-bold py-2 px-4 rounded-lg shadow-sm transition-all duration-300 ease-in-out border border-brand-stroke/80 hover:enabled:bg-brand-stroke/20 focus:outline-none focus:ring-2 focus:ring-brand-stroke focus:ring-opacity-75 disabled:bg-brand-surface/50 disabled:text-brand-subtle/50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading && loadingText === t('gettingSuggestions') ? t('thinking') : t('getSuggestions')}
-                    </button>
-                  </div>
-                  
-                  {isLoading && loadingText === t('generatingImageGallery') && <Spinner text={loadingText} />}
-                  
-                  {suggestions.length > 0 && (
-                     <div className="space-y-4 animate-fade-in">
-                        <h3 className="text-lg font-semibold text-brand-text text-center">{t('suggestionTitle')}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                           {suggestions.map((suggestion) => (
-                                <div key={suggestion.name} className="bg-brand-surface rounded-xl border border-brand-stroke/50 shadow-sm overflow-hidden flex flex-col">
-                                  <div className="w-full h-40 bg-brand-bg flex items-center justify-center">
-                                    {suggestionImages[suggestion.name] === 'loading' && <Spinner />}
-                                    {suggestionImages[suggestion.name] && suggestionImages[suggestion.name] !== 'loading' && (
-                                        <img 
-                                            src={(suggestionImages[suggestion.name] as any).url} 
-                                            alt={suggestion.name} 
-                                            className="w-full h-full object-contain cursor-pointer"
-                                            onClick={() => handleUseSuggestionImage((suggestionImages[suggestion.name] as any).file)}
-                                        />
-                                    )}
-                                  </div>
-                                  <div className="p-3 flex-grow">
-                                      <h4 className="font-semibold text-brand-text text-sm">{suggestion.name}</h4>
-                                      <p className="text-xs text-brand-subtle mt-1">{suggestion.description}</p>
-                                  </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                   )}
-
-                  <div className="space-y-4">
-                      <h2 className="text-2xl font-semibold text-brand-text text-center">{t('chooseStyleTheme')}</h2>
-                      <div className="flex flex-col sm:flex-row justify-center gap-x-6 gap-y-2">
-                          {(['Photorealistic', 'Magazine Cover', 'Artistic'] as StyleTheme[]).map(theme => (
-                              <label key={theme} className="flex items-center space-x-2 cursor-pointer">
-                                  <input
-                                      type="radio"
-                                      name="styleTheme"
-                                      value={theme}
-                                      checked={styleTheme === theme}
-                                      onChange={() => setStyleTheme(theme)}
-                                      className="form-radio h-5 w-5 text-brand-primary border-brand-stroke focus:ring-brand-primary"
-                                  />
-                                  <span className="text-brand-text font-medium">{t(theme.toLowerCase() as TranslationKey)}</span>
-                              </label>
+  
+                  <div>
+                      <label htmlFor="preferred-colors" className="block text-sm font-medium text-brand-text mb-1">{t('preferredColors')}</label>
+                      <input
+                          id="preferred-colors"
+                          type="text"
+                          value={preferredColors}
+                          onChange={(e) => setPreferredColors(e.target.value)}
+                          placeholder={t('preferredColorsPlaceholder')}
+                          className="w-full bg-brand-bg border border-brand-stroke rounded-lg py-2 px-3 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                      />
+                  </div>
+  
+                  <button 
+                      onClick={handleGetSuggestions} 
+                      disabled={isLoading || (!stylistPrompt || (stylistPrompt === 'custom' && !customStylistPrompt))}
+                      className="w-full bg-brand-surface text-brand-text font-bold py-2 px-4 rounded-lg shadow-sm transition-all duration-300 ease-in-out border border-brand-stroke/80 hover:enabled:bg-brand-stroke/20 focus:outline-none focus:ring-2 focus:ring-brand-stroke focus:ring-opacity-75 disabled:bg-brand-surface/50 disabled:text-brand-subtle/50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                      {loadingText === t('gettingSuggestions') ? <Spinner inline /> : t('getSuggestions')}
+                  </button>
+                </div>
+                
+                {suggestions.length > 0 && (
+                   <div className="space-y-4 animate-fade-in">
+                      <h3 className="text-lg font-semibold text-brand-text text-center">{t('suggestionTitle')}</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                         {suggestions.map((suggestion) => (
+                              <div key={suggestion.name} className="bg-brand-surface rounded-xl border border-brand-stroke/50 shadow-sm overflow-hidden flex flex-col">
+                                <div 
+                                  className={`w-full h-40 bg-brand-bg flex items-center justify-center relative group cursor-pointer ${suggestionImages[suggestion.name] === 'loading' ? 'animate-pulse' : ''}`}
+                                  onClick={() => {
+                                    const imageInfo = suggestionImages[suggestion.name];
+                                    if (imageInfo && imageInfo !== 'loading') {
+                                      handleUseSuggestionImage(imageInfo.file);
+                                    }
+                                  }}
+                                >
+                                  {suggestionImages[suggestion.name] === 'loading' && <Spinner />}
+                                  {suggestionImages[suggestion.name] && suggestionImages[suggestion.name] !== 'loading' && (
+                                      <>
+                                          <img 
+                                              src={(suggestionImages[suggestion.name] as any).url} 
+                                              alt={suggestion.name} 
+                                              className="w-full h-full object-contain"
+                                          />
+                                          <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                              <div className="text-center">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                  </svg>
+                                                  <p className="font-semibold mt-1 text-sm">{t('selectItem')}</p>
+                                              </div>
+                                          </div>
+                                      </>
+                                  )}
+                                </div>
+                                <div className="p-3 flex-grow">
+                                    <h4 className="font-semibold text-brand-text text-sm">{suggestion.name}</h4>
+                                    <p className="text-xs text-brand-subtle mt-1">{suggestion.description}</p>
+                                </div>
+                              </div>
                           ))}
                       </div>
                   </div>
-                  
-                  {error && <p className="text-red-500 text-center">{error}</p>}
-
-                  {isLoading && loadingText === t('magicMessage') ? (
-                    <div className="py-8">
-                       <Spinner text={t('magicMessage')} />
+                )}
+  
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-brand-text text-center">{t('chooseStyleTheme')}</h2>
+                    <div className="flex flex-col items-start w-full space-y-3">
+                        {(['Photorealistic', 'Magazine Cover', 'Artistic'] as StyleTheme[]).map(theme => (
+                            <label key={theme} className="flex items-center space-x-3 cursor-pointer w-full">
+                                <input
+                                    type="radio"
+                                    name="styleTheme"
+                                    value={theme}
+                                    checked={styleTheme === theme}
+                                    onChange={() => setStyleTheme(theme)}
+                                    className="h-5 w-5 text-brand-primary border-brand-stroke focus:ring-2 focus:ring-brand-primary/50"
+                                />
+                                <span className="text-brand-text font-medium">{t(theme.toLowerCase().replace(' ', '') as TranslationKey)}</span>
+                            </label>
+                        ))}
                     </div>
-                  ) : (
-                    <div className="space-y-4 pt-4">
-                        <button 
-                          onClick={handleTryOn} 
-                          disabled={!personImage || !clothingImage}
-                          className="w-full text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all duration-300 ease-in-out bg-gradient-to-r from-brand-primary to-brand-secondary hover:enabled:brightness-110 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-opacity-50 disabled:bg-gradient-to-r disabled:from-brand-primary/50 disabled:to-brand-secondary/50 disabled:cursor-not-allowed"
-                        >
-                          {t('tryItOn')}
-                        </button>
-                        <button 
-                          onClick={handleSaveSession}
-                          disabled={!personImage || !clothingImage}
-                          className="w-full bg-brand-surface text-brand-text font-bold py-3 px-4 rounded-xl shadow-sm transition-all duration-300 ease-in-out border border-brand-stroke/50 hover:enabled:bg-brand-stroke/20 focus:outline-none focus:ring-2 focus:ring-brand-stroke focus:ring-opacity-75 disabled:bg-brand-surface/50 disabled:text-brand-subtle/50 disabled:cursor-not-allowed"
-                        >
-                          {t('saveForLater')}
-                        </button>
-                    </div>
-                  )}
-              </div>
+                </div>
+                
+                {error && <p className="text-red-500 text-center">{error}</p>}
+  
+                <div className="space-y-4 pt-4">
+                    <button 
+                      onClick={handleTryOn} 
+                      disabled={!personImage || !clothingImage}
+                      className="w-full text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all duration-300 ease-in-out bg-gradient-to-r from-brand-primary to-brand-secondary hover:enabled:brightness-110 focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-opacity-50 disabled:bg-gradient-to-r disabled:from-brand-primary/50 disabled:to-brand-secondary/50 disabled:cursor-not-allowed"
+                    >
+                      {t('tryItOn')}
+                    </button>
+                    <button 
+                      onClick={handleSaveSession}
+                      disabled={!personImage || !clothingImage}
+                      className="w-full bg-brand-surface text-brand-text font-bold py-3 px-4 rounded-xl shadow-sm transition-all duration-300 ease-in-out border border-brand-stroke/50 hover:enabled:bg-brand-stroke/20 focus:outline-none focus:ring-2 focus:ring-brand-stroke focus:ring-opacity-75 disabled:bg-brand-surface/50 disabled:text-brand-subtle/50 disabled:cursor-not-allowed"
+                    >
+                      {t('saveForLater')}
+                    </button>
+                </div>
+            </div>
           </div>
         );
 
@@ -962,6 +1064,9 @@ const App: React.FC = () => {
         return (
           <div className="w-full max-w-4xl mx-auto animate-fade-in px-4">
               <button onClick={() => setView('start')} className="text-brand-subtle font-semibold hover:text-brand-text transition-colors flex items-center mb-6">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                 </svg>
                 {t('backToMenu')}
               </button>
               <h2 className="text-3xl font-semibold text-brand-text text-center mb-8">{t('yourHistory')}</h2>
@@ -1025,9 +1130,20 @@ const App: React.FC = () => {
             {history.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
                     {history.map((item, index) => (
-                        <div key={index} className="group relative aspect-w-9 aspect-h-16 rounded-xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 hover:z-10" onClick={() => setSelectedHistoryItem(item)}>
-                           <img src={item.result} alt={t('generatedTryOn')} className="object-cover w-full h-full" />
-                        </div>
+                         <div key={index} className="group relative aspect-w-9 aspect-h-16 rounded-xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-105 hover:z-10 bg-brand-surface/50 backdrop-blur-sm hover:bg-brand-surface/70" onClick={() => setSelectedHistoryItem(item)}>
+                            <img src={item.result} alt={t('generatedTryOn')} className="object-cover w-full h-full" />
+                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteHistoryItem(index); }} 
+                                className="absolute top-2 right-2 bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 scale-90 group-hover:scale-100"
+                                aria-label={t('deleteHistoryItem')}
+                                title={t('deleteItem')}
+                             >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                             </button>
+                          </div>
                     ))}
                 </div>
             ) : (

@@ -9,16 +9,23 @@ const fileToGenerativePart = (base64Data: string, mimeType: string) => {
   };
 };
 
-export const getClothingSuggestions = async (prompt: string, lang: 'en' | 'ru'): Promise<{ name: string; description: string }[]> => {
+export const getClothingSuggestions = async (prompt: string, lang: 'en' | 'ru', colors?: string): Promise<{ name: string; description: string }[]> => {
     if (!process.env.API_KEY) {
         throw new Error("API_KEY environment variable is not set.");
     }
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = 'gemini-2.5-pro';
 
-    const systemInstruction = lang === 'ru'
+    let systemInstruction = lang === 'ru'
         ? "Ты — креативный и знающий модный стилист. На основе запроса пользователя предложи три различных и стильных варианта одежды. Для каждого предложения укажи краткое название и подробное, привлекательное описание, подходящее для создания изображения. Отвечай на русском языке."
         : "You are a creative and knowledgeable fashion stylist. Based on the user's request, provide three distinct and stylish clothing item suggestions. For each suggestion, provide a concise name and a detailed, appealing description suitable for generating an image. Respond in English.";
+
+    if (colors && colors.trim()) {
+        const colorInstruction = lang === 'ru'
+            ? ` Учти эти предпочтения по цвету: ${colors}.`
+            : ` Incorporate these preferred colors: ${colors}.`;
+        systemInstruction += colorInstruction;
+    }
 
     try {
         const response = await ai.models.generateContent({
@@ -61,7 +68,8 @@ export const getClothingSuggestions = async (prompt: string, lang: 'en' | 'ru'):
 };
 
 export const generateClothingImage = async (
-  description: string
+  description: string,
+  styleTheme: 'Photorealistic' | 'Magazine Cover' | 'Artistic'
 ): Promise<{ data: string; mimeType: string }> => {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable is not set.");
@@ -69,8 +77,19 @@ export const generateClothingImage = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-2.5-flash-image';
   
+  let promptText = `Generate a high-resolution, photorealistic image of a single clothing item: "${description}". The item should be displayed flat or on a mannequin against a pure white background. There should be no shadows or other objects in the image. This image is for a virtual try-on application.`;
+
+  switch (styleTheme) {
+      case 'Magazine Cover':
+          promptText = `Generate a high-resolution, professional studio shot of a single clothing item: "${description}". The item should be displayed as if for a high-fashion magazine catalog, on a clean, subtly textured, or minimalist colored background that complements the item. Avoid clutter. This image is for a virtual try-on application.`;
+          break;
+      case 'Artistic':
+          promptText = `Generate a high-resolution, artistic image of a single clothing item: "${description}". The item should be displayed against a complementary, artistic, or abstract background (e.g., watercolor wash, painterly textures, soft gradients) that enhances the clothing's style. The focus should remain on the clothing item. This image is for a virtual try-on application.`;
+          break;
+  }
+  
   const textPart = {
-      text: `Generate a high-resolution, photorealistic image of a single clothing item: "${description}". The item should be displayed flat or on a mannequin against a pure white background. There should be no shadows or other objects in the image. This image is for a virtual try-on application.`
+      text: promptText
   };
   
   try {
